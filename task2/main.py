@@ -14,6 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 from data_processing import get_data
 from mydataloader import Language, Mydataset, my_collate_fn
 from models import TextRNN
+from sklearn.model_selection import train_test_split
 
 if __name__ == '__main__':
 
@@ -25,10 +26,21 @@ if __name__ == '__main__':
     train, test = get_data('data')
     language = Language()
     word2id, id2word, embedding = language.build_word2vec('./pretrained_wordvector/glove.6B.50d.txt')
-    sents = language.fit(train['Phrase'].values)
-    train_dataset = Mydataset(sents, train['Sentiment'].values)
+
+    train_sents, val_sents, train_labels, val_labels = train_test_split(train['Phrase'].values,
+                                                                        train['Sentiment'].values,
+                                                                        test_size=0.3,
+                                                                        random_state=0,
+                                                                        stratify=train['Sentiment'].values)
+
+
+    train_dataset = Mydataset(language.fit(train_sents), train_labels)
     train_dataloader = DataLoader(dataset=train_dataset, batch_size=128,
                                   shuffle=True, collate_fn=my_collate_fn)
+    val_dataset = Mydataset(language.fit(val_sents), val_labels)
+    val_dataloader = DataLoader(dataset=val_dataset, batch_size=128,
+                                shuffle=True, collate_fn=my_collate_fn)
+
     if model_type == 'rnn':
         model = TextRNN(vocab_size=len(word2id), embedding_size=50,
                         hidden_size=50, num_of_class=5,
@@ -45,14 +57,14 @@ if __name__ == '__main__':
     for e in range(epoch_num):
 
         model.eval()
-        train_accs = []
-        for X, y, lens in train_dataloader:
+        val_accs = []
+        for X, y, lens in val_dataloader:
             logits = model(X, lens)
             preds = torch.argmax(logits, dim=1)
-            acc = torch.mean(torch.tensor(preds == y, dtype=torch.float))
-            train_accs.append(acc)
-        train_acc = sum(train_accs)/len(train_accs)
-        print('epoch {} train acc: {}%'.format(e, train_acc))
+            acc = torch.mean((preds == y).float())
+            val_accs.append(acc)
+        val_acc = sum(val_accs)/len(val_accs)
+        print('epoch {} train acc: {}%'.format(e, val_acc))
 
 
         model.train()
