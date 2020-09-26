@@ -13,7 +13,7 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import Dataset, DataLoader
 from data_processing import get_data
 from mydataloader import Language, Mydataset, my_collate_fn
-from models import TextRNN
+from models import TextRNN, TextCNN
 from sklearn.model_selection import train_test_split
 
 if __name__ == '__main__':
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     epoch_num = 10
     learning_rate = 0.001
     num_of_class = 5
-    model_type = 'rnn'  # ['rnn', 'lstm', 'cnn']
+    model_type = 'cnn'  # ['rnn', 'lstm', 'cnn']
 
     train, test = get_data('data')
     language = Language()
@@ -50,7 +50,9 @@ if __name__ == '__main__':
                         hidden_size=50, num_of_class=5,
                         weights=torch.Tensor(embedding), rnn_type='lstm')
     elif model_type == 'cnn':
-        pass
+        model = TextCNN(vocab_size=len(word2id), embedding_size=50,
+                        num_of_class=5, weights=torch.Tensor(embedding))
+
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     loss_function = CrossEntropyLoss()
 
@@ -59,7 +61,10 @@ if __name__ == '__main__':
         model.eval()
         val_accs = []
         for X, y, lens in val_dataloader:
-            logits = model(X, lens)
+            if model_type in ['rnn', 'lstm']:
+                logits = model(X, lens)
+            elif model_type is 'cnn':
+                logits = model(X)
             preds = torch.argmax(logits, dim=1)
             acc = torch.mean((preds == y).float())
             val_accs.append(acc)
@@ -69,7 +74,10 @@ if __name__ == '__main__':
 
         model.train()
         for X, y, lens in train_dataloader:
-            logits = model(X, lens)
+            if model_type in ['rnn', 'lstm']:
+                logits = model(X, lens)
+            elif model_type is 'cnn':
+                logits = model(X)
             optimizer.zero_grad()
             loss = loss_function(logits, y)
             loss.backward()
