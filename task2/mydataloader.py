@@ -11,6 +11,9 @@ from torch.utils.data import Dataset, DataLoader
 from data_processing import get_data
 from torch.nn.utils.rnn import pad_sequence
 import torch
+import spacy
+
+spacy_en = spacy.load('en_core_web_sm')
 
 class Language:
 
@@ -85,6 +88,9 @@ def my_collate_fn(batch_data):
 
     return torch.LongTensor(padded_sents), torch.LongTensor(labels), torch.FloatTensor(sents_len)
 
+
+def tokenize(sent):
+    return [token.text for token in spacy_en.tokenizer(sent)]
 
 
 
