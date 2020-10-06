@@ -9,6 +9,7 @@
 
 import torchtext
 import os
+from tqdm import tqdm
 from torchtext.data import BucketIterator, Iterator
 from torchtext import data
 
@@ -41,7 +42,7 @@ def get_iter(datapath, batch_size, vector=None, use_tree=False, device='cpu'):
 
     train_iter, dev_iter = BucketIterator.splits(
         (train_dataset, dev_dataset),
-        batch_size=(batch_size, batch_size),
+        batch_sizes=(batch_size, batch_size),
         device=device,
         sort_key=lambda x: len(x.premise) + len(x.hypothesis),
         sort_within_batch=True,
@@ -67,4 +68,9 @@ if __name__ == '__main__':
     #         i += 1
     #         if i > 1000:
     #             break
-    get_iter('data/snli_1.0', 32)
+    train_iter, dev_iter, test_iter, TEXT, LABEL, TREE = get_iter('data/snli_1.0', 32)
+    for batch in tqdm(train_iter):
+        x1, len_x1 = batch.premise
+        x2, len_x2 = batch.hypothesis
+        print(len_x1, len_x2, len_x1+len_x2)
+
